@@ -1,3 +1,6 @@
+// Smocvin Denis
+// Iot Bootcamp
+
 #include <string.h>
 #include <stdlib.h>
 
