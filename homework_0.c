@@ -10,6 +10,8 @@
 // 2 - light intensity
 // 3 - motion
 // 4 - distance
+// 5 - tilt
+// 6 - gas sensor
 
 
 typedef struct sensor_t {
@@ -20,7 +22,7 @@ typedef struct sensor_t {
   int lowerLimit;
 } sensorType;
 
-enum {SENSOR_TEMP, SENSOR_LDR, SENSOR_PIR, SENSOR_ULTRASONIC, SENSOR_NR_OF};
+enum {SENSOR_TEMP, SENSOR_LDR, SENSOR_PIR, SENSOR_ULTRASONIC, SENSOR_TILT, SENSOR_GAS, SENSOR_NR_OF};
 
 
 // ===================
@@ -32,6 +34,8 @@ enum {SENSOR_TEMP, SENSOR_LDR, SENSOR_PIR, SENSOR_ULTRASONIC, SENSOR_NR_OF};
 #define MIN_DISTANCE_LIMIT 50
 #define MAX_LIGHT_LIMIT 75
 #define MIN_LIGHT_LIMIT 25
+#define MAX_GAS_LIMIT 900
+#define MIN_GAS_LIMIT 720
 
 
 // ==========
@@ -75,7 +79,7 @@ float getLight()
 {
   int rawData = analogRead(LDR_PIN);
   float voltage = map(rawData, ADC_MIN, ADC_MAX, VOLT_MIN, VOLT_MAX),
-  		light = map(voltage, VOLT_MIN, VOLT_MAX, LIGHT_MIN, LIGHT_MAX);
+  			light = map(voltage, VOLT_MIN, VOLT_MAX, LIGHT_MIN, LIGHT_MAX);
   
   return light;
 }
@@ -103,7 +107,7 @@ float getPIRData()
 
 void setupUltrasonic()
 {
-	pinMode(TRIG_PIN, OUTPUT);
+		pinMode(TRIG_PIN, OUTPUT);
   	pinMode(ECHO_PIN, INPUT);
 }
 
@@ -122,6 +126,40 @@ float getDistance()
   	distance = duration * 0.034 / 2;
   
   	return distance;
+}
+
+
+// ===================
+// SW 200D Tilt sensor
+// ===================
+#define TILT_PIN 10
+
+void setupTilt()
+{
+	pinMode(TILT_PIN, INPUT_PULLUP);
+  	//attachInterrup(1, blink, RISING);
+}
+
+float getTilt()
+{
+	 if(digitalRead(TILT_PIN) == HIGH)
+       	return 1;
+  	 return 0;
+}
+
+// ================
+// Gas sensor (MQ6)
+// ================
+#define GAS_PIN A2
+
+void setupGas()
+{
+	pinMode(GAS_PIN, INPUT); 
+}
+
+float getGas()
+{
+	return analogRead(GAS_PIN); 
 }
 
 
@@ -175,6 +213,18 @@ sensorType sensorList[SENSOR_NR_OF] = {
     "cm",
     MAX_DISTANCE_LIMIT,
     MIN_DISTANCE_LIMIT
+  },
+  {
+  	getTilt,
+    "tilt",
+    "yes/no"
+  },
+  {
+   	getGas,
+    "gas",
+    "ppm",
+    MAX_GAS_LIMIT,
+    MIN_GAS_LIMIT
   }
 };
 
@@ -218,13 +268,13 @@ void displaySensorData(unsigned int id)
   	if(id < 0 || id >= SENSOR_NR_OF) return;
   
  	char *paramName = getSensorParamName(id),
-    	  *unitName = getSensorUnit(id);
+    	 *unitName = getSensorUnit(id);
     float value = getSensorData(id);
     
     // pentru valori boolean - ex: PIR (yes/no)
     if(strcmp(unitName, "yes/no") == 0)
     {
-     	Serial.print(paramName);
+     		Serial.print(paramName);
       	Serial.print(": ");
       
       	if(value == 1)
@@ -234,7 +284,7 @@ void displaySensorData(unsigned int id)
     else {
       	// pentru neincadrarea in limita     
       	int upperLimit = sensorList[id].upperLimit,
-      		lowerLimit = sensorList[id].lowerLimit;
+      			lowerLimit = sensorList[id].lowerLimit;
       
       	if(value > upperLimit) led(GREEN_LED_PIN, 100);
       	if(value < lowerLimit) led(RED_LED_PIN, 100);
@@ -258,7 +308,7 @@ char hexaKeys[KEYPAD_ROWS][KEYPAD_COLS] = {
 };
 
 byte rowPins[KEYPAD_ROWS] = {9, 8, 7, 6},
-	 colPins[KEYPAD_COLS] = {5, 4, 3, 2};
+	 	 colPins[KEYPAD_COLS] = {5, 4, 3, 2};
 
 Keypad customKeypad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, KEYPAD_ROWS, KEYPAD_COLS );
 
@@ -272,10 +322,12 @@ void listenKeypad()
       	// corespunde indicelui din enumerare
     	switch (key)
         {
-        	case '1':  	displaySensorData(0); break;
-          	case '2':	displaySensorData(1); break;
+        		case '1':  	displaySensorData(0); break;
+          	case '2':		displaySensorData(1); break;
           	case '3': 	displaySensorData(2); break;
           	case '4': 	displaySensorData(3); break;
+      			case '5':   displaySensorData(4); break;
+      			case '6':		displaySensorData(5); break;
           	default: 	Serial.println("No such sensor!"); break;
         }
 }
@@ -292,6 +344,8 @@ void setup()
   setupLDR();
   setupPIR();
   setupUltrasonic();
+  setupTilt();
+  setupGas();
   setupLEDs();
 }
 
