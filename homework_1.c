@@ -1,3 +1,7 @@
+// Smocvin Denis
+// IOT Bootcamp
+// 01.06.2020
+
 #define ADC_MIN 0
 #define ADC_MAX 1023
 #define VOLTAGE_MIN 0
